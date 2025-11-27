@@ -1,0 +1,104 @@
+CREATE  TABLE ass4.games_stg AS
+select
+appid AS ID,app_details.data.name as name, app_details.data.is_free as is_free,
+app_details.data.release_date.date As release_date,
+app_details.data.genres AS genres, app_details.data.required_age AS required_age
+from ass4.games_r
+where app_details.data.name IS NOT NULL;
+
+CREATE  TABLE ass4.reviews_stg AS 
+SELECT appid, review_data.success AS success,
+ review_data.query_summary.review_score   AS review_score,
+review_data.query_summary.total_reviews AS  total_reviews,
+
+review_data.reviews as reviews
+from ass4.reviews_r ;
+
+CREATE  TABLE ass4.reviews_mart  as
+select
+appid,success,review_score, total_reviews
+from ass4.reviews_stg;
+
+
+select g.name, r.total_reviews
+from ass4.games_stg  g
+join ass4.reviews_mart r ON g.id = r.appid
+ORDER BY r.total_reviews desc
+limit  20
+;
+
+
+select
+REGEXP_EXTRACT(release_date, r'(\d{4})') AS year,
+COUNT(release_date)  num_of_games
+FROM ass4.games_stg
+where REGEXP_EXTRACT(release_date, r'(\d{4})') IS NOT NULL 
+GROUP BY year
+order by  year
+
+;
+
+SELECT
+genre.description  genre, COUNT(*) AS popularity
+froM ass4.games_stg,
+UNNEST(genres)   genre
+group by genre
+order by  popularity DESC;
+
+
+select
+genre.description  genre,
+count(*) AS all_g,
+countif(is_free= true) / count(*) as free_percentage
+from ass4.games_stg
+cross join UNNEST(genres) as genre
+GROUP BY genre
+order by free_percentage DESC;
+
+
+select  ARRAY_LENGTH(genres) as  how_many_generes, COUNT(*) as how_many_games
+from ass4.games_stg
+group by how_many_generes
+ORDER BY how_many_generes
+
+ ;
+
+
+
+
+#https://chatgpt.com/share/69285fb5-f024-8009-8b12-999759abfbc0 - Req expression
+#https://chatgpt.com/share/69270c36-5754-8009-890c-d521618338d3 - code for transform json
+
+
+import json
+
+# ---- 1. Load the extracted JSON file ----
+with open("steam_2025_5k-dataset-reviews_20250901.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+# ---- 2. Extract list of game objects ----
+games = data["reviews"]   # <-- list of game-level review objects
+
+# ---- 3. Write JSONL (one game per line) ----
+with open("steam_reviews.jsonl", "w", encoding="utf-8") as out:
+    for game in games:
+        line = json.dumps(game, ensure_ascii=False)
+        out.write(line + "\n")
+
+
+
+import json
+
+# ---- 1. Load the extracted GAMES JSON file ----
+with open("steam_2025_5k-dataset-games_20250831.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+# ---- 2. Extract list of game objects ----
+games = data["games"]   # <-- list with one element per game
+
+# ---- 3. Write JSONL (one game object per line) ----
+with open("steam_games.jsonl", "w", encoding="utf-8") as out:
+    for game in games:
+        line = json.dumps(game, ensure_ascii=False)
+        out.write(line + "\n")
+https://chatgpt.com/share/69270c36-5754-8009-890c-d521618338d3 - the code was crafted with gpt
